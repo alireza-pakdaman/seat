@@ -12,32 +12,65 @@ from   openpyxl.styles import PatternFill                       # NEW
 #  Seat catalogue – mirrors the visual grid
 # ─────────────────────────────────────────────────────────────────────────────
 SEATS: dict[str, dict[str, object]] = {
-    # Workstations 1-10 (WS 6 is height adjustable)
-    **{f"WS {n}":  {"type": "ws",  "adjustable": n == 6, "seat_number": n}  for n in range(1, 11)},
-    
-    # Regular seats 1-30 (keeping original configuration)
-    **{f"Seat {n}": {"type": "reg", "adjustable": n in (13, 15, 30), "seat_number": n}
-       for n in range(1, 31)},
-    
-    # Private rooms 345-354 (345, 347, 348, 349, 351, 354 are height adjustable)
-    **{f"Room {n}": {"type": "pr",  "adjustable": n in (345, 347, 348, 349, 351, 354), "seat_number": n}
-       for n in range(345, 355)},
-    
-    # SAS offices 1-12 (SAS 5 is height adjustable)
-    **{f"SAS {n}": {"type": "sas", "adjustable": n == 5, "enabled": True, "seat_number": n} for n in range(1, 13)},
-    
-    # SHA Classrooms
-    # SHA 356: 17 seats, seat 1 is height adjustable
-    **{f"SHA 356 Seat {n}": {"type": "sha", "classroom": 356, "adjustable": n == 1, "seat_number": n} for n in range(1, 18)},
-    
-    # SHA 357: 19 seats, seat 1 is height adjustable
-    **{f"SHA 357 Seat {n}": {"type": "sha", "classroom": 357, "adjustable": n == 1, "seat_number": n} for n in range(1, 20)},
-    
-    # SHA 359: 18 seats, seat 1 is height adjustable
-    **{f"SHA 359 Seat {n}": {"type": "sha", "classroom": 359, "adjustable": n == 1, "seat_number": n} for n in range(1, 19)},
-    
-    # SHA 358: 31 seats, seats 1, 2, 3 are height adjustable
-    **{f"SHA 358 Seat {n}": {"type": "sha", "classroom": 358, "adjustable": n in (1, 2, 3), "seat_number": n} for n in range(1, 32)},
+
+    # ---------- Workstations -------------------------------------------------
+    **{f"WS {n}": {"type": "ws",
+                   "adjustable": n == 6,
+                   "seat_number": n}
+       for n in range(1, 11)},                       # 1-10  (WS-6 adjustable)
+
+    # ---------- Regular open-area seats -------------------------------------
+    **{f"Seat {n}": {"type": "reg",
+                     "adjustable": n in (13, 15, 30),
+                     "seat_number": n}
+       for n in range(1, 31)},                       # 1-30, 13/15/30 adjustable
+
+    # ---------- Private rooms on campus (main building) ---------------------
+    **{f"Room {n}": {"type": "pr",
+                     "adjustable": n in (345, 347, 348, 349, 351, 354),
+                     "seat_number": n}
+       for n in range(345, 355)},                    # Rooms 345-354
+
+    # ---------- *Extra* private rooms at Campus Corners ---------------------
+    **{f"CC Room {n}": {"type": "pr",
+                        "adjustable": False,         # none are height-adj
+                        "seat_number": n}
+       for n in range(1, 26)},                       # 25 rooms labelled CC 1-25
+
+    # ---------- SAS testing offices -----------------------------------------
+    **{f"SAS {n}": {"type": "sas",
+                    "adjustable": n == 5,
+                    "seat_number": n}
+       for n in range(1, 13)},                       # 1-12, SAS-5 adjustable
+
+    # ---------- SHA classrooms ----------------------------------------------
+    # SHA-356 : 17 seats (seat 1 adjustable)
+    **{f"SHA 356 Seat {n}": {"type": "sha",
+                             "classroom": 356,
+                             "adjustable": n == 1,
+                             "seat_number": n}
+       for n in range(1, 18)},
+
+    # SHA-357 : 19 seats (seat 1 adjustable)
+    **{f"SHA 357 Seat {n}": {"type": "sha",
+                             "classroom": 357,
+                             "adjustable": n == 1,
+                             "seat_number": n}
+       for n in range(1, 20)},
+
+    # SHA-358 : 31 seats (seats 1-3 adjustable)
+    **{f"SHA 358 Seat {n}": {"type": "sha",
+                             "classroom": 358,
+                             "adjustable": n in (1, 2, 3),
+                             "seat_number": n}
+       for n in range(1, 32)},
+
+    # SHA-359 : **15** seats (seat 1 adjustable)   ← fixed count
+    **{f"SHA 359 Seat {n}": {"type": "sha",
+                             "classroom": 359,
+                             "adjustable": n == 1,
+                             "seat_number": n}
+       for n in range(1, 16)},
 }
 
 # ───────────────────────────── Constants ──────────────────────────────────
@@ -70,18 +103,20 @@ def choose_room_preferences() -> dict[str, bool]:
     root = tk.Tk()
     root.title("Select Room Types")
     vars_ = {
-        'private_rooms': tk.BooleanVar(value=True),
-        'workstations':  tk.BooleanVar(value=True),
-        'regular_seats': tk.BooleanVar(value=True),
-        'sas_offices':   tk.BooleanVar(value=True),
-        'sha_classrooms': tk.BooleanVar(value=True),
+        'private_rooms':   tk.BooleanVar(value=True),
+        'campus_corners':  tk.BooleanVar(value=True),   # NEW ✅
+        'workstations':    tk.BooleanVar(value=True),
+        'regular_seats':   tk.BooleanVar(value=True),
+        'sas_offices':     tk.BooleanVar(value=True),
+        'sha_classrooms':  tk.BooleanVar(value=True),
     }
     for text, var in [
-        ("Private Rooms", vars_['private_rooms']),
-        ("Workstations", vars_['workstations']),
-        ("Regular Seats", vars_['regular_seats']),
-        ("SAS Offices", vars_['sas_offices']),
-        ("SHA Classrooms", vars_['sha_classrooms']),
+        ("Private Rooms (Main Bldg)", vars_['private_rooms']),
+        ("Campus Corners Rooms",      vars_['campus_corners']),   # NEW ✅
+        ("Workstations",              vars_['workstations']),
+        ("Regular Seats",             vars_['regular_seats']),
+        ("SAS Offices",               vars_['sas_offices']),
+        ("SHA Classrooms",            vars_['sha_classrooms']),
     ]:
         tk.Checkbutton(root, text=text, variable=var).pack(anchor="w")
 
@@ -304,124 +339,86 @@ def main() -> None:
     # 6  Load & preprocess the roster
     df = read_source(data)
 
-    # 7  Cohort splits – EXACTLY as in your original logic
-    print("🔍 Debugging cohort splits...")
+    # 7  Cohort splits - Sequential building to avoid overlaps
+    print("🔍 Building cohorts sequentially...")
     print(f"📋 Total students in roster: {len(df)}")
     
-    # Debug Test Accommodation column
-    print(f"\n🔍 Test Accommodation column analysis:")
-    unique_accommodations = df["Test Accommodation"].value_counts()
-    print(f"   Unique accommodations found: {len(unique_accommodations)}")
-    for accommodation, count in unique_accommodations.head(10).items():
-        print(f"   • '{accommodation}': {count} students")
-    if len(unique_accommodations) > 10:
-        print(f"   ... and {len(unique_accommodations) - 10} more unique accommodations")
+    # Start with all students
+    remaining = df.copy()
     
-    # Check for missing accommodation data
-    missing_accommodations = df["Test Accommodation"].isna().sum()
-    print(f"   Missing accommodations: {missing_accommodations} students")
+    # Sequential cohort building
+    print("\n🔄 Building cohorts sequentially...")
     
-    # DF1_PR - Private Room
-    print(f"\n🔍 DF1_PR (Private Room) analysis:")
-    pr_mask = df["Test Accommodation"].str.contains("Private Room", case=False, na=False)
-    print(f"   Students with 'Private Room' in accommodation: {pr_mask.sum()}")
-    DF1_PR = df[pr_mask]
-    print(f"   DF1_PR final count: {len(DF1_PR)}")
+    # DF1_PR - Private Room (highest priority)
+    pr_mask = remaining["Test Accommodation"].str.contains("Private Room", case=False, na=False)
+    DF1_PR = remaining[pr_mask]
+    remaining = remaining.drop(DF1_PR.index)
+    print(f"   DF1_PR: {len(DF1_PR)} students (remaining: {len(remaining)})")
     
     # DF2_WS - Workstation needs
-    print(f"\n🔍 DF2_WS (Workstation needs) analysis:")
-    ws_mask = df["Test Accommodation"].str.contains(r"Read and Write|MS Word|Kurzweil", case=False, na=False)
-    print(f"   Students with workstation keywords: {ws_mask.sum()}")
-    ws_not_pr_mask = ws_mask & ~df.index.isin(DF1_PR.index)
-    print(f"   Students with workstation needs (excluding PR): {ws_not_pr_mask.sum()}")
-    DF2_WS = df[ws_not_pr_mask]
-    print(f"   DF2_WS final count: {len(DF2_WS)}")
+    ws_mask = remaining["Test Accommodation"].str.contains(r"Read and Write|MS Word|Kurzweil", case=False, na=False)
+    DF2_WS = remaining[ws_mask]
+    remaining = remaining.drop(DF2_WS.index)
+    print(f"   DF2_WS: {len(DF2_WS)} students (remaining: {len(remaining)})")
     
     # DF3_HAD - Height Adjustable Desks
-    print(f"\n🔍 DF3_HAD (Height Adjustable) analysis:")
-    print(f"   'Requires Adjustable' column exists: {'Requires Adjustable' in df.columns}")
-    if 'Requires Adjustable' in df.columns:
-        had_count = df["Requires Adjustable"].sum()
-        print(f"   Students requiring adjustable desks: {had_count}")
-        # Debug what's in the Test Accommodation that might contain height adjustable
-        height_adj_mask = df["Test Accommodation"].str.contains("Height Adjustable", case=False, na=False)
-        print(f"   Students with 'Height Adjustable' in accommodation: {height_adj_mask.sum()}")
-        DF3_HAD = df[df["Requires Adjustable"]]
-        print(f"   DF3_HAD final count: {len(DF3_HAD)}")
-    else:
-        print("   ❌ 'Requires Adjustable' column not found!")
-        DF3_HAD = pd.DataFrame()
+    DF3_HAD = remaining[remaining["Requires Adjustable"]]
+    remaining = remaining.drop(DF3_HAD.index)
+    print(f"   DF3_HAD: {len(DF3_HAD)} students (remaining: {len(remaining)})")
     
     # DF4_SCRIBE - Scribe needs
-    print(f"\n🔍 DF4_SCRIBE (Scribe needs) analysis:")
-    scribe_mask = df["Test Accommodation"].str.contains("Scribe", case=False, na=False)
-    print(f"   Students with 'Scribe' in accommodation: {scribe_mask.sum()}")
-    DF4_SCRIBE = df[scribe_mask]
-    print(f"   DF4_SCRIBE final count: {len(DF4_SCRIBE)}")
+    scribe_mask = remaining["Test Accommodation"].str.contains("Scribe", case=False, na=False)
+    DF4_SCRIBE = remaining[scribe_mask]
+    remaining = remaining.drop(DF4_SCRIBE.index)
+    print(f"   DF4_SCRIBE: {len(DF4_SCRIBE)} students (remaining: {len(remaining)})")
     
     # DF6_FINAL - Final exams
-    print(f"\n🔍 DF6_FINAL (Final exams) analysis:")
-    final_mask = df["Test Accommodation"].str.contains("Final", case=False, na=False)
-    print(f"   Students with 'Final' in accommodation: {final_mask.sum()}")
-    DF6_FINAL = df[final_mask]
-    print(f"   DF6_FINAL final count: {len(DF6_FINAL)}")
+    final_mask = remaining["Test Accommodation"].str.contains("Final", case=False, na=False)
+    DF6_FINAL = remaining[final_mask]
+    remaining = remaining.drop(DF6_FINAL.index)
+    print(f"   DF6_FINAL: {len(DF6_FINAL)} students (remaining: {len(remaining)})")
     
     # DF7_ES - Evening Students
-    print(f"\n🔍 DF7_ES (Evening Students) analysis:")
-    print(f"   End Time column type: {df['End Time'].dtype}")
-    print(f"   Begin Time column type: {df['Begin Time'].dtype}")
-    print(f"   Class Time column type: {df['Class Time'].dtype}")
-    
-    # Check time analysis
-    end_time_22 = df["End Time"].apply(lambda t: t.hour == 22 if hasattr(t, 'hour') else False)
-    print(f"   Students with End Time = 22:00: {end_time_22.sum()}")
-    
-    begin_before_class = df["Begin Time"] < df["Class Time"]
-    print(f"   Students with Begin Time < Class Time: {begin_before_class.sum()}")
-    
+    end_time_22 = remaining["End Time"].apply(lambda t: t.hour == 22 if hasattr(t, 'hour') else False)
+    begin_before_class = remaining["Begin Time"] < remaining["Class Time"]
     es_mask = end_time_22 & begin_before_class
-    print(f"   Students meeting both ES criteria: {es_mask.sum()}")
-    DF7_ES = df[es_mask]
-    print(f"   DF7_ES final count: {len(DF7_ES)}")
+    DF7_ES = remaining[es_mask]
+    remaining = remaining.drop(DF7_ES.index)
+    print(f"   DF7_ES: {len(DF7_ES)} students (remaining: {len(remaining)})")
     
-    # DF5_MAIN - Main group
-    print(f"\n🔍 DF5_MAIN (Main group) analysis:")
-    excluded_indices = pd.concat([DF1_PR, DF2_WS]).index
-    print(f"   Students excluded (PR + WS): {len(excluded_indices)}")
-    main_mask = ~df.index.isin(excluded_indices)
-    print(f"   Students remaining for main group: {main_mask.sum()}")
-    DF5_MAIN = df[main_mask]
-    print(f"   DF5_MAIN final count: {len(DF5_MAIN)}")
-    
-    # DF9_CLASSROOMS - Classroom cohort
-    print(f"\n🔍 DF9_CLASSROOMS (Classroom cohort) analysis:")
-    excluded_indices_all = pd.concat([DF1_PR, DF2_WS, DF5_MAIN]).index
-    print(f"   Students excluded (PR + WS + MAIN): {len(excluded_indices_all)}")
-    classroom_mask = ~df.index.isin(excluded_indices_all)
-    print(f"   Students remaining for classrooms: {classroom_mask.sum()}")
-    DF9_CLASSROOMS = df[classroom_mask]
-    print(f"   DF9_CLASSROOMS final count: {len(DF9_CLASSROOMS)}")
-    
-    print(f"\n📊 Summary of all cohorts:")
-    print(f"   DF1_PR: {len(DF1_PR)} students")
-    print(f"   DF2_WS: {len(DF2_WS)} students")
-    print(f"   DF3_HAD: {len(DF3_HAD)} students")
-    print(f"   DF4_SCRIBE: {len(DF4_SCRIBE)} students")
-    print(f"   DF5_MAIN: {len(DF5_MAIN)} students")
-    print(f"   DF6_FINAL: {len(DF6_FINAL)} students")
-    print(f"   DF7_ES: {len(DF7_ES)} students")
+    # ---------- SAS offices (must run BEFORE we create MAIN) --------------------
+    if room_preferences['sas_offices']:
+        sas_mask = remaining["Test Accommodation"].str.contains(
+            r"SAS|Special|Individual|Separate|Extra Time|Alternative|Modified",
+            case=False, na=False
+        )
+        DF8_SAS = remaining[sas_mask]
+        remaining = remaining.drop(DF8_SAS.index)
+        print(f"   DF8_SAS: {len(DF8_SAS)} students (remaining: {len(remaining)})")
+    else:
+        DF8_SAS = pd.DataFrame()
+        print(f"   DF8_SAS: {len(DF8_SAS)} students (SAS offices disabled)")
+
+    # ---------- DF5_MAIN – whatever is still unhandled --------------------------
+    DF5_MAIN = remaining.copy()
+    remaining = remaining.drop(DF5_MAIN.index)
+    print(f"   DF5_MAIN: {len(DF5_MAIN)} students (remaining: {len(remaining)})")
+
+    # ---------- DF9_CLASSROOMS – absolute leftovers -----------------------------
+    DF9_CLASSROOMS = remaining.copy()
     print(f"   DF9_CLASSROOMS: {len(DF9_CLASSROOMS)} students")
     
-    total_in_cohorts = len(DF1_PR) + len(DF2_WS) + len(DF3_HAD) + len(DF4_SCRIBE) + len(DF5_MAIN) + len(DF6_FINAL) + len(DF7_ES) + len(DF9_CLASSROOMS)
+    # Verify no overlaps
+    total_in_cohorts = len(DF1_PR) + len(DF2_WS) + len(DF3_HAD) + len(DF4_SCRIBE) + len(DF5_MAIN) + len(DF6_FINAL) + len(DF7_ES) + len(DF8_SAS) + len(DF9_CLASSROOMS)
+    print(f"\n📊 Cohort verification:")
     print(f"   Total students in cohorts: {total_in_cohorts}")
     print(f"   Original roster size: {len(df)}")
-    if total_in_cohorts != len(df):
-        print(f"   ⚠️  Note: Cohorts may overlap or have gaps")
+    print(f"   ✅ No overlaps: {total_in_cohorts == len(df)}")
 
     splits = {
         "DF1_PR": DF1_PR, "DF2_WS": DF2_WS, "DF3_HAD": DF3_HAD,
         "DF4_SCRIBE": DF4_SCRIBE, "DF5_MAIN": DF5_MAIN,
-        "DF6_FINAL": DF6_FINAL, "DF7_ES": DF7_ES, "DF9_CLASSROOMS": DF9_CLASSROOMS
+        "DF6_FINAL": DF6_FINAL, "DF7_ES": DF7_ES, "DF8_SAS": DF8_SAS, "DF9_CLASSROOMS": DF9_CLASSROOMS
     }
     
     if want_excel:
@@ -432,9 +429,20 @@ def main() -> None:
     # 8  Build seat pools based on user preferences
     seat_pools = {}
     
+    # --- Private rooms (main building) -----------------------------------------
     if room_preferences['private_rooms']:
-        seat_pools['private_rooms'] = [s for s in SEATS if SEATS[s]["type"] == "pr"]
-        print(f"✅ Private rooms enabled: {len(seat_pools['private_rooms'])} seats")
+        seat_pools['private_rooms'] = [s for s in SEATS
+                                       if SEATS[s]["type"] == "pr"
+                                       and not s.startswith("CC Room")]
+        print(f"✅ Main-building private rooms: {len(seat_pools['private_rooms'])} seats")
+    else:
+        seat_pools['private_rooms'] = []
+
+    # --- Campus Corners --------------------------------------------------------
+    if room_preferences.get('campus_corners', False):
+        cc_rooms = [s for s in SEATS if s.startswith("CC Room")]
+        seat_pools['private_rooms'].extend(cc_rooms)      # piggy-back on same pool
+        print(f"✅ Campus Corners rooms added: {len(cc_rooms)} seats")
     
     if room_preferences['workstations']:
         seat_pools['workstations'] = [s for s in SEATS if SEATS[s]["type"] == "ws"]
@@ -487,34 +495,49 @@ def main() -> None:
     if room_preferences['regular_seats'] and len(DF5_MAIN) > 0:
         cohorts["DF5_MAIN"] = (DF5_MAIN, seat_pools['regular_seats'])
     
-    if room_preferences['sas_offices']:
-        # Find students who might need SAS offices
-        remaining_students = df[~df.index.isin(pd.concat([DF1_PR, DF2_WS]).index)]
-        special_accommodation_students = remaining_students[
-            remaining_students["Test Accommodation"].str.contains(
-                r"SAS|Special|Individual|Separate|Extra Time|Alternative|Modified", 
-                case=False, na=False
-            )
-        ]
-        
-        if len(special_accommodation_students) > 0:
-            cohorts["DF8_SAS"] = (special_accommodation_students, seat_pools['sas_offices'])
-            print(f"📋 Including {len(special_accommodation_students)} students for SAS office assignment")
+    if room_preferences['sas_offices'] and len(DF8_SAS) > 0:
+        cohorts["DF8_SAS"] = (DF8_SAS, seat_pools['sas_offices'])
     
     if room_preferences['sha_classrooms'] and len(DF9_CLASSROOMS) > 0:
         cohorts["DF9_CLASSROOMS"] = (DF9_CLASSROOMS, seat_pools['sha_classrooms'])
 
-    # 10  Process assignments
+    # Ensure every cohort – even empty ones – has its three workbooks
+    if want_excel:
+        for name, part in splits.items():
+            if (out_path := pathlib.Path(out, f"{name}.xlsx")).exists():
+                continue                         # raw workbook already written
+            write_excel(part, name,                template, out, "PROCESSED")
+            write_excel(part, f"{name}_ASSIGNED",  template, out, "ASSIGNED")
+            write_excel(part, f"{name}_NOT_ASSIGNED", template, out, "NOT_ASSIGNED")
+
+    # 10  Process assignments with proper duplicate counting
     assigns: dict[str, dict[str, object]] = {}
-    total_assigned = 0
-    total_not_assigned = 0
+    seen = set()  # Track student numbers already placed
+    assigned_ids = set()  # Track all assigned student IDs
+    not_assigned_ids = set()  # Track all not-assigned student IDs
     
     for name, (part, pool) in cohorts.items():
         print(f"🔄 Processing {name}: {len(part)} students, {len(pool)} seats available")
         assigned, not_assigned = assign_students(part, pool)
         
-        total_assigned += len(assigned)
-        total_not_assigned += len(not_assigned)
+        # Guard against double-seating
+        assigned_unique = assigned[~assigned["Student Number"].isin(seen)]
+        double_seated = assigned[assigned["Student Number"].isin(seen)]
+        
+        if len(double_seated) > 0:
+            print(f"   ⚠️  Prevented double-seating: {len(double_seated)} students")
+            # Move double-seated students to not_assigned
+            not_assigned = pd.concat([not_assigned, double_seated], ignore_index=True)
+        
+        # Update tracking
+        seen.update(assigned_unique["Student Number"])
+        assigned = assigned_unique  # Use only unique assignments
+        
+        # Track unique student IDs for proper counting (with safety checks)
+        if not assigned.empty:
+            assigned_ids.update(assigned["Student Number"])
+        if not not_assigned.empty:
+            not_assigned_ids.update(not_assigned["Student Number"])
         
         print(f"   ✅ Assigned: {len(assigned)}, ❌ Not assigned: {len(not_assigned)}")
 
@@ -522,14 +545,23 @@ def main() -> None:
             write_excel(assigned,     f"{name}_ASSIGNED",     template, out, "ASSIGNED")
             write_excel(not_assigned, f"{name}_NOT_ASSIGNED", template, out, "NOT_ASSIGNED")
 
-        # build JSON payload
-        for _, row in assigned.iterrows():
-            assigns[row["Test Room"]] = {
-                "student_number": int(row["Student Number"]),
-                "last_name":      str(row["Student Last Name"]),
-                "first_name":     str(row["Student First Name"]),
-                "requiresAdjust": bool(row["Requires Adjustable"]),
-            }
+        # build JSON payload (with safety check)
+        if not assigned.empty:
+            for _, row in assigned.iterrows():
+                assigns[row["Test Room"]] = {
+                    "student_number": int(row["Student Number"]),
+                    "last_name":      str(row["Student Last Name"]),
+                    "first_name":     str(row["Student First Name"]),
+                    "requiresAdjust": bool(row["Requires Adjustable"]),
+                }
+
+    # Handle empty cohorts - create empty ASSIGNED and NOT_ASSIGNED files for missing cohorts
+    empty_cohorts = set(splits) - set(cohorts)
+    for name in empty_cohorts:
+        print(f"📝 Creating empty files for cohort: {name}")
+        if want_excel:
+            write_excel(pd.DataFrame(), f"{name}_ASSIGNED",     template, out, "ASSIGNED")
+            write_excel(pd.DataFrame(), f"{name}_NOT_ASSIGNED", template, out, "NOT_ASSIGNED")
 
     # 11  Save JSON files and provide detailed summary
     pathlib.Path(out, "seats.json").write_text(
@@ -537,34 +569,28 @@ def main() -> None:
     pathlib.Path(out, "assigns.json").write_text(
         json.dumps(assigns, indent=2), encoding="utf-8")
 
+    # Calculate final totals using unique student counts
+    total_assigned = len(assigned_ids)
+    total_not_assigned = len(not_assigned_ids)
+
     # Print detailed completion summary
     print(f"\n✅  All done! Excel reports and JSON files generated in:")
     print(f"    📁 {out}")
     print(f"\n📊 Assignment Summary:")
     print(f"    • Total students assigned: {total_assigned}")
     print(f"    • Total students not assigned: {total_not_assigned}")
+    print(f"    • Total students processed: {total_assigned + total_not_assigned}")
+    print(f"    • Original roster size: {len(df)}")
     if total_assigned + total_not_assigned > 0:
         print(f"    • Assignment success rate: {(total_assigned/(total_assigned+total_not_assigned)*100):.1f}%")
-    print(f"\n🏢 Seat Breakdown:")
-    room_stats = {}
-    for seat_code in assigns.keys():
-        if 'WS' in seat_code:
-            room_stats['Workstations'] = room_stats.get('Workstations', 0) + 1
-        elif 'Room' in seat_code:
-            room_stats['Private Rooms'] = room_stats.get('Private Rooms', 0) + 1
-        elif 'SAS' in seat_code:
-            room_stats['SAS Offices'] = room_stats.get('SAS Offices', 0) + 1
-        elif 'SHA' in seat_code:
-            room_stats['SHA Classrooms'] = room_stats.get('SHA Classrooms', 0) + 1
-        elif 'Seat' in seat_code:
-            room_stats['Regular Seats'] = room_stats.get('Regular Seats', 0) + 1
     
-    for room_type, count in room_stats.items():
-        print(f"    • {room_type}: {count} students")
-    
-    print(f"\n🎯 Ready for web application launch!")
+    # Verify totals match
+    if total_assigned + total_not_assigned != len(df):
+        print(f"    ⚠️  Warning: Total processed ({total_assigned + total_not_assigned}) != roster size ({len(df)})")
+    else:
+        print(f"    ✅ Totals verified: All {len(df)} students accounted for")
 
-# ────────────────────────────────────────────────────────────────────────────
+    # ────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     main()
 
