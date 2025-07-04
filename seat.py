@@ -60,6 +60,35 @@ def pick_folder(title: str) -> str:
     root = tk.Tk(); root.withdraw()
     return filedialog.askdirectory(title=title)
 
+
+def choose_room_preferences() -> dict[str, bool]:
+    """Ask the user which room types to include using a checkbox window."""
+    root = tk.Tk()
+    root.title("Select Room Types")
+    vars_ = {
+        'private_rooms': tk.BooleanVar(value=True),
+        'workstations':  tk.BooleanVar(value=True),
+        'regular_seats': tk.BooleanVar(value=True),
+        'sas_offices':   tk.BooleanVar(value=True),
+        'sha_classrooms': tk.BooleanVar(value=True),
+    }
+    for text, var in [
+        ("Private Rooms", vars_['private_rooms']),
+        ("Workstations", vars_['workstations']),
+        ("Regular Seats", vars_['regular_seats']),
+        ("SAS Offices", vars_['sas_offices']),
+        ("SHA Classrooms", vars_['sha_classrooms']),
+    ]:
+        tk.Checkbutton(root, text=text, variable=var).pack(anchor="w")
+
+    prefs: dict[str, bool] = {}
+    def _ok():
+        for key, var in vars_.items():
+            prefs[key] = var.get()
+        root.destroy()
+    tk.Button(root, text="OK", command=_ok).pack(pady=5)
+    root.mainloop()
+    return prefs
 # ───────────────────────────── Data ingest ──────────────────────────────────
 def read_source(path: str) -> pd.DataFrame:
     """Load roster, tag 'Requires Adjustable', coerce time-like columns."""
@@ -260,59 +289,8 @@ def main() -> None:
         if not template:
             print("No template chosen; Excel outputs will be basic workbooks.")
 
-    # 4  Ask about each room type individually
-    room_preferences = {}
-    
-    # Private Rooms
-    room_preferences['private_rooms'] = messagebox.askyesno(
-        "Private Rooms",
-        "Include Private Rooms (345-354) in seat assignments?\n\n"
-        "Private rooms are typically used for students requiring\n"
-        "isolated testing environments or specific accommodations.\n\n"
-        "Available: 10 private rooms\n"
-        "Height adjustable: Rooms 345, 347, 348, 349, 351, 354"
-    )
-    
-    # Workstations
-    room_preferences['workstations'] = messagebox.askyesno(
-        "Workstations",
-        "Include Workstations (WS 1-10) in seat assignments?\n\n"
-        "Workstations are equipped with computers and are suitable\n"
-        "for students requiring MS Word, Kurzweil, or similar software.\n\n"
-        "Available: 10 workstations\n"
-        "Height adjustable: WS 6"
-    )
-    
-    # Regular Seats
-    room_preferences['regular_seats'] = messagebox.askyesno(
-        "Regular Seats",
-        "Include Regular Seats (1-30) in seat assignments?\n\n"
-        "Standard testing seats in the main examination area.\n\n"
-        "Available: 30 regular seats\n"
-        "Height adjustable: Seats 13, 15, 30"
-    )
-    
-    # SAS Offices
-    room_preferences['sas_offices'] = messagebox.askyesno(
-        "SAS Offices",
-        "Include SAS Offices (1-12) in seat assignments?\n\n"
-        "SAS offices provide quiet, individual testing environments\n"
-        "for students with specific accommodation needs.\n\n"
-        "Available: 12 SAS offices\n"
-        "Height adjustable: SAS 5"
-    )
-    
-    # SHA Classrooms
-    room_preferences['sha_classrooms'] = messagebox.askyesno(
-        "SHA Classrooms",
-        "Include SHA Classrooms in seat assignments?\n\n"
-        "SHA classrooms provide group testing environments:\n"
-        "• SHA 356: 17 seats (seat 1 height adjustable)\n"
-        "• SHA 357: 19 seats (seat 1 height adjustable)\n"
-        "• SHA 358: 31 seats (seats 1,2,3 height adjustable)\n"
-        "• SHA 359: 18 seats (seat 1 height adjustable)\n\n"
-        "Total: 85 classroom seats"
-    )
+    # 4  Select room types
+    room_preferences = choose_room_preferences()
 
     # 5  Pick an output folder
     out = pick_folder("Select an output folder")
