@@ -54,11 +54,15 @@ MIN_COL_WIDTH = 10
 # ───────────────────────────── GUI helpers ──────────────────────────────────
 def pick_file(title: str, patterns: tuple[tuple[str, str], ...]) -> str:
     root = tk.Tk(); root.withdraw()
-    return filedialog.askopenfilename(title=title, filetypes=patterns)
+    path = filedialog.askopenfilename(title=title, filetypes=patterns)
+    root.destroy()
+    return path
 
 def pick_folder(title: str) -> str:
     root = tk.Tk(); root.withdraw()
-    return filedialog.askdirectory(title=title)
+    folder = filedialog.askdirectory(title=title)
+    root.destroy()
+    return folder
 
 
 def choose_room_preferences() -> dict[str, bool]:
