@@ -443,21 +443,43 @@ def main() -> None:
     if room_preferences['sas_offices']:
         seat_pools['sas_offices'] = [s for s in SEATS if SEATS[s]["type"] == "sas"]
         print(f"✅ SAS offices enabled: {len(seat_pools['sas_offices'])} seats")
-    
+
     if room_preferences['sha_classrooms']:
         seat_pools['sha_classrooms'] = [s for s in SEATS if SEATS[s]["type"] == "sha"]
         print(f"✅ SHA classrooms enabled: {len(seat_pools['sha_classrooms'])} seats")
 
+    # Collect all adjustable seats from the enabled pools
+    adjustable_sources = []
+    for pool_name in ("private_rooms", "workstations", "regular_seats",
+                      "sas_offices", "sha_classrooms"):
+        adjustable_sources.extend(seat_pools.get(pool_name, []))
+    seat_pools['adjustable_seats'] = [s for s in adjustable_sources
+                                      if SEATS[s]["adjustable"]]
+    if seat_pools['adjustable_seats']:
+        print(f"✅ Adjustable seats available: {len(seat_pools['adjustable_seats'])} seats")
+
     # 9  Seat-assignment cohorts
     cohorts = {}
-    
+
     # Assign cohorts to appropriate seat pools
     if room_preferences['private_rooms'] and len(DF1_PR) > 0:
         cohorts["DF1_PR"] = (DF1_PR, seat_pools['private_rooms'])
-    
+
+    if len(seat_pools.get('adjustable_seats', [])) > 0 and len(DF3_HAD) > 0:
+        cohorts["DF3_HAD"] = (DF3_HAD, seat_pools['adjustable_seats'])
+
+    if room_preferences['private_rooms'] and len(DF4_SCRIBE) > 0:
+        cohorts["DF4_SCRIBE"] = (DF4_SCRIBE, seat_pools['private_rooms'])
+
     if room_preferences['workstations'] and len(DF2_WS) > 0:
         cohorts["DF2_WS"] = (DF2_WS, seat_pools['workstations'])
-    
+
+    if room_preferences['sha_classrooms'] and len(DF6_FINAL) > 0:
+        cohorts["DF6_FINAL"] = (DF6_FINAL, seat_pools['sha_classrooms'])
+
+    if room_preferences['sha_classrooms'] and len(DF7_ES) > 0:
+        cohorts["DF7_ES"] = (DF7_ES, seat_pools['sha_classrooms'])
+
     if room_preferences['regular_seats'] and len(DF5_MAIN) > 0:
         cohorts["DF5_MAIN"] = (DF5_MAIN, seat_pools['regular_seats'])
     
