@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime, json, pathlib, random, shutil, sys, re
+import datetime, json, pathlib, random, shutil, sys, re, os
 import tkinter as tk
 from   tkinter import filedialog, messagebox
 
@@ -86,48 +86,98 @@ MIN_COL_WIDTH = 10
 
 # ───────────────────────────── GUI helpers ──────────────────────────────────
 def pick_file(title: str, patterns: tuple[tuple[str, str], ...]) -> str:
-    root = tk.Tk(); root.withdraw()
-    path = filedialog.askopenfilename(title=title, filetypes=patterns)
-    root.destroy()
-    return path
+    """Choose a file via Tk when possible, otherwise fall back to CLI input."""
+    try:
+        root = tk.Tk(); root.withdraw()
+        path = filedialog.askopenfilename(title=title, filetypes=patterns)
+        root.destroy()
+        return path
+    except tk.TclError:
+        # Headless environment – ask in the terminal
+        return input(f"{title}: ")
 
 def pick_folder(title: str) -> str:
-    root = tk.Tk(); root.withdraw()
-    folder = filedialog.askdirectory(title=title)
-    root.destroy()
-    return folder
+    """Choose a folder via Tk when possible, otherwise fall back to CLI."""
+    try:
+        root = tk.Tk(); root.withdraw()
+        folder = filedialog.askdirectory(title=title)
+        root.destroy()
+        return folder
+    except tk.TclError:
+        return input(f"{title}: ")
+
+
+def ask_yes_no(title: str, message: str, default: bool = False) -> bool:
+    """Display a yes/no dialog or fall back to terminal input."""
+    try:
+        root = tk.Tk(); root.withdraw()
+        result = messagebox.askyesno(title, message)
+        root.destroy()
+        return bool(result)
+    except tk.TclError:
+        prompt = f"{title}: {message} [{'Y/n' if default else 'y/N'}]: "
+        resp = input(prompt)
+        if resp.strip() == '':
+            return default
+        return resp.strip().lower() in ('y', 'yes')
 
 
 def choose_room_preferences() -> dict[str, bool]:
-    """Ask the user which room types to include using a checkbox window."""
-    root = tk.Tk()
-    root.title("Select Room Types")
-    vars_ = {
-        'private_rooms':   tk.BooleanVar(value=True),
-        'campus_corners':  tk.BooleanVar(value=True),   # NEW ✅
-        'workstations':    tk.BooleanVar(value=True),
-        'regular_seats':   tk.BooleanVar(value=True),
-        'sas_offices':     tk.BooleanVar(value=True),
-        'sha_classrooms':  tk.BooleanVar(value=True),
-    }
-    for text, var in [
-        ("Private Rooms (Main Bldg)", vars_['private_rooms']),
-        ("Campus Corners Rooms",      vars_['campus_corners']),   # NEW ✅
-        ("Workstations",              vars_['workstations']),
-        ("Regular Seats",             vars_['regular_seats']),
-        ("SAS Offices",               vars_['sas_offices']),
-        ("SHA Classrooms",            vars_['sha_classrooms']),
-    ]:
-        tk.Checkbutton(root, text=text, variable=var).pack(anchor="w")
+    """Ask the user which room types to include.
 
-    prefs: dict[str, bool] = {}
-    def _ok():
-        for key, var in vars_.items():
-            prefs[key] = var.get()
-        root.destroy()
-    tk.Button(root, text="OK", command=_ok).pack(pady=5)
-    root.mainloop()
-    return prefs
+    Uses a Tk checkbox window when possible. In headless environments,
+    falls back to simple yes/no prompts in the terminal.
+    """
+    try:
+        root = tk.Tk()
+        root.title("Select Room Types")
+        vars_ = {
+            'private_rooms':   tk.BooleanVar(value=True),
+            'campus_corners':  tk.BooleanVar(value=True),
+            'workstations':    tk.BooleanVar(value=True),
+            'regular_seats':   tk.BooleanVar(value=True),
+            'sas_offices':     tk.BooleanVar(value=True),
+            'sha_classrooms':  tk.BooleanVar(value=True),
+        }
+        for text, var in [
+            ("Private Rooms (Main Bldg)", vars_['private_rooms']),
+            ("Campus Corners Rooms",      vars_['campus_corners']),
+            ("Workstations",              vars_['workstations']),
+            ("Regular Seats",             vars_['regular_seats']),
+            ("SAS Offices",               vars_['sas_offices']),
+            ("SHA Classrooms",            vars_['sha_classrooms']),
+        ]:
+            tk.Checkbutton(root, text=text, variable=var).pack(anchor="w")
+
+        prefs: dict[str, bool] = {}
+
+        def _ok() -> None:
+            for key, var in vars_.items():
+                prefs[key] = var.get()
+            root.destroy()
+
+        tk.Button(root, text="OK", command=_ok).pack(pady=5)
+        root.mainloop()
+        return prefs
+    except tk.TclError:
+        # Terminal fallback
+        defaults = {
+            'private_rooms':   True,
+            'campus_corners':  True,
+            'workstations':    True,
+            'regular_seats':   True,
+            'sas_offices':     True,
+            'sha_classrooms':  True,
+        }
+        prefs: dict[str, bool] = {}
+        for key, default in defaults.items():
+            prompt = f"Include {key.replace('_', ' ')}? [{'Y/n' if default else 'y/N'}]: "
+            resp = input(prompt)
+            if resp.strip() == '':
+                prefs[key] = default
+            else:
+                prefs[key] = resp.strip().lower() in ('y', 'yes')
+        return prefs
 # ───────────────────────────── Data ingest ──────────────────────────────────
 def read_source(path: str) -> pd.DataFrame:
     """Load roster, tag 'Requires Adjustable', coerce time-like columns."""
@@ -295,21 +345,23 @@ def main() -> None:
         print("No data file selected – exiting."); sys.exit()
 
     # 2  Ask whether Excel outputs are wanted
-    want_excel = messagebox.askyesno(
+    want_excel = ask_yes_no(
         "Excel outputs?",
         "Generate the usual cohort workbooks as well?\n"
-        "(No → skip straight to JSON output only.)"
+        "(No → skip straight to JSON output only.)",
+        default=True,
     )
     
     # 3  Pick template (default to May 5, 2025.xlsx)
     template = None
     if want_excel:
-        use_default_template = messagebox.askyesno(
+        use_default_template = ask_yes_no(
             "Use Default Template?",
             "Use 'May 5, 2025.xlsx' as the template?\n\n"
             "This will maintain the standard format with proper\n"
             "Test Room and Seat Number columns.\n\n"
-            "Choose 'No' to select a different template."
+            "Choose 'No' to select a different template.",
+            default=True,
         )
         
         if use_default_template:
